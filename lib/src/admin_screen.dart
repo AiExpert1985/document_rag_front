@@ -1,8 +1,11 @@
+// lib/src/admin_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
+import 'package:document_chat/src/api_service.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
@@ -26,7 +29,6 @@ class AdminScreen extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             children: [
-              // Upload Section
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
@@ -38,56 +40,60 @@ class AdminScreen extends ConsumerWidget {
                       allowedExtensions: ['pdf'],
                     );
 
-                    // FIX: Check if mounted AFTER picking the file
+                    if (result == null) return;
                     if (!context.mounted) return;
 
-                    if (result != null) {
-                      final file = result.files.first;
+                    final file = result.files.first;
+
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Uploading...')));
+
+                    try {
+                      await ref.read(apiServiceProvider).uploadDocument(file);
+                      if (!context.mounted) return;
+
+                      // CHANGED: Use invalidate instead of refresh
+                      ref.invalidate(documentsProvider);
 
                       ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(content: Text('Uploading...')));
-
-                      try {
-                        await ref.read(apiServiceProvider).uploadDocument(file);
-
-                        if (!context.mounted) return;
-
-                        final _ = ref.refresh(documentsProvider);
-
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(content: Text('Upload successful!')));
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-                      }
+                          .showSnackBar(const SnackBar(content: Text('Upload successful!')));
+                    } on ApiException catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
                     }
                   },
                 ),
               ),
               const Divider(),
-              // Document List
               Expanded(
                 child: documentsAsync.when(
-                  data: (docs) => ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      return ListTile(
-                        leading: const Icon(Icons.picture_as_pdf),
-                        title: Text(doc['filename']),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async {
-                            await ref.read(apiServiceProvider).deleteDocument(doc['id']);
-                            final _ = ref.refresh(documentsProvider);
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                  data: (docs) {
+                    if (docs.isEmpty) {
+                      return const Center(child: Text('No documents uploaded yet.'));
+                    }
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        return ListTile(
+                          leading: const Icon(Icons.picture_as_pdf),
+                          title: Text(doc.filename),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await ref.read(apiServiceProvider).deleteDocument(doc.id);
+
+                              // CHANGED: Use invalidate instead of refresh
+                              ref.invalidate(documentsProvider);
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) => Center(child: Text('Error: $err')),
+                  error: (err, stack) => Center(child: Text('Error loading documents: $err')),
                 ),
               ),
             ],

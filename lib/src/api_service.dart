@@ -1,55 +1,91 @@
-// src/api_service.dart - ONLY change the baseUrl
-
+// lib/src/api_service.dart
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 
-class ApiService {
-  // Fix: Try localhost first, then your IP
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost:8000/', // CHANGED: Try localhost first
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+// CHANGED: Models are still imported for type safety
+import 'package:document_chat/src/models/document.dart';
+import 'package:document_chat/src/models/search_result.dart';
 
-  Future<List<Map<String, dynamic>>> listDocuments() async {
-    final response = await _dio.get('/documents');
-    return List<Map<String, dynamic>>.from(response.data['documents']);
+class ApiException implements Exception {
+  final String message;
+  ApiException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ApiService {
+  final Dio _dio;
+
+  // CHANGED: Reverted to a hardcoded baseUrl and a default constructor
+  ApiService()
+      : _dio = Dio(BaseOptions(
+          baseUrl: 'http://127.0.0.1:8000', // Hardcoded URL
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 60),
+        ));
+
+  Never _handleDioError(DioException e) {
+    if (e.response?.data is Map && e.response?.data['detail'] != null) {
+      throw ApiException(e.response?.data['detail']);
+    }
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        throw ApiException('Connection timed out. Please try again.');
+      case DioExceptionType.connectionError:
+        throw ApiException('Could not connect to the server. Please check your network.');
+      default:
+        throw ApiException('An unexpected error occurred. Please try again.');
+    }
+  }
+
+  Future<List<Document>> listDocuments() async {
+    try {
+      final response = await _dio.get('/documents');
+      final List<dynamic> docList = response.data['documents'];
+      return docList.map((json) => Document.fromJson(json)).toList();
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
   }
 
   Future<void> deleteDocument(String docId) async {
-    await _dio.delete('/documents/$docId');
+    try {
+      await _dio.delete('/documents/$docId');
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
   }
 
   Future<Map<String, dynamic>> uploadDocument(PlatformFile file) async {
-    // Handle both web (bytes) and mobile (path) platforms
     MultipartFile multipartFile;
-    
     if (file.bytes != null) {
-      // Web platform
-      multipartFile = MultipartFile.fromBytes(
-        file.bytes!,
-        filename: file.name,
-      );
+      multipartFile = MultipartFile.fromBytes(file.bytes!, filename: file.name);
     } else if (file.path != null) {
-      // Mobile platform  
-      multipartFile = await MultipartFile.fromFile(
-        file.path!,
-        filename: file.name,
-      );
+      multipartFile = await MultipartFile.fromFile(file.path!, filename: file.name);
     } else {
-      throw Exception('Cannot read file');
+      throw ApiException('Cannot read the selected file.');
     }
 
-    final formData = FormData.fromMap({
-      'file': multipartFile,
-    });
+    final formData = FormData.fromMap({'file': multipartFile});
 
-    final response = await _dio.post('/upload-pdf', data: formData);
-    return response.data;
+    try {
+      final response = await _dio.post('/upload-pdf', data: formData);
+      return response.data;
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
   }
-  
-  Future<List<dynamic>> search(String query) async {
-    final response = await _dio.post('/search', data: {'question': query});
-    return response.data['results'];
+
+  Future<List<SearchResult>> search(String query) async {
+    try {
+      final response = await _dio.post('/search', data: {'question': query});
+      final List<dynamic> results = response.data['results'];
+      return results.map((json) => SearchResult.fromJson(json)).toList();
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
   }
 }
