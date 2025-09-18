@@ -1,19 +1,19 @@
-// src/chat_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
-import 'package:intl/intl.dart';
+// import 'package:intl/intl.dart'; // <-- FIX: REMOVED UNUSED IMPORT
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  // FIX: Renamed _ChatScreenState to ChatScreenState
+  ChatScreenState createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+// FIX: Renamed class to be public
+class ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
 
   @override
@@ -54,7 +54,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessage(Map<String, dynamic> message) {
     final isUser = message['sender'] == 'user';
-    
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -64,23 +64,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           color: isUser ? Colors.blue[100] : Colors.grey[300],
           borderRadius: BorderRadius.circular(16.0),
         ),
-        child: isUser 
-          ? Text(message['content'])
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'From: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                      TextSpan(text: '${message['content']['document_name']} (Page ${message['content']['page_number']})'),
-                    ]
-                  )
-                ),
-                const SizedBox(height: 8),
-                Text(message['content']['content_snippet']),
-              ],
-            ),
+        child: isUser
+            ? Text(message['content'])
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(TextSpan(children: [
+                    const TextSpan(text: 'From: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    TextSpan(
+                        text:
+                            '${message['content']['document_name']} (Page ${message['content']['page_number']})'),
+                  ])),
+                  const SizedBox(height: 8),
+                  Text(message['content']['content_snippet']),
+                ],
+              ),
       ),
     );
   }

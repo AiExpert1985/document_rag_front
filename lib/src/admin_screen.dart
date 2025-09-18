@@ -1,5 +1,3 @@
-// src/admin_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -38,24 +36,30 @@ class AdminScreen extends ConsumerWidget {
                     FilePickerResult? result = await FilePicker.platform.pickFiles(
                       type: FileType.custom,
                       allowedExtensions: ['pdf'],
-                      withData: true, // Fixed: Important for web platform
                     );
+
+                    // FIX: Check if mounted AFTER picking the file
+                    if (!context.mounted) return;
 
                     if (result != null) {
                       final file = result.files.first;
-                      
-                      // Show loading indicator
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Uploading...')));
-                      
+
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(const SnackBar(content: Text('Uploading...')));
+
                       try {
                         await ref.read(apiServiceProvider).uploadDocument(file);
-                        ref.refresh(documentsProvider); // Refresh the list
-                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Upload successful!')));
+
+                        if (!context.mounted) return;
+
+                        final _ = ref.refresh(documentsProvider);
+
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Upload successful!')));
                       } catch (e) {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Upload failed: $e')));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
                       }
                     }
                   },
@@ -76,7 +80,7 @@ class AdminScreen extends ConsumerWidget {
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () async {
                             await ref.read(apiServiceProvider).deleteDocument(doc['id']);
-                            ref.refresh(documentsProvider);
+                            final _ = ref.refresh(documentsProvider);
                           },
                         ),
                       );
