@@ -13,13 +13,52 @@ class AdminScreen extends ConsumerWidget {
 
   Future<void> _launchURL(Uri url, BuildContext context) async {
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      // CHANGED: Add this 'mounted' check to fix the warning.
       if (!context.mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not launch $url')),
       );
     }
+  }
+
+  void _showClearAllDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Clear All Data?'),
+          content: const Text(
+              'This will permanently delete all uploaded documents and their data. This action cannot be undone.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear All'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // Close the dialog
+                try {
+                  await ref.read(apiServiceProvider).clearAllDocuments();
+                  ref.invalidate(documentsProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('All documents cleared successfully!')),
+                    );
+                  }
+                } on ApiException catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to clear documents: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -41,39 +80,51 @@ class AdminScreen extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             children: [
+              // --- FIX IS HERE: The "Clear All" button is now at the top ---
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload PDF'),
-                  onPressed: () async {
-                    FilePickerResult? result = await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['pdf'],
-                    );
+                child: Wrap(
+                  spacing: 12.0,
+                  runSpacing: 12.0,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Upload PDF'),
+                      onPressed: () async {
+                        FilePickerResult? result = await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: ['pdf'],
+                        );
 
-                    if (result == null) return;
-                    if (!context.mounted) return;
+                        if (result == null || !context.mounted) return;
 
-                    final file = result.files.first;
+                        final file = result.files.first;
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Uploading...')));
 
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('Uploading...')));
-
-                    try {
-                      await ref.read(apiServiceProvider).uploadDocument(file);
-                      if (!context.mounted) return;
-
-                      ref.invalidate(documentsProvider);
-
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(content: Text('Upload successful!')));
-                    } on ApiException catch (e) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-                    }
-                  },
+                        try {
+                          await ref.read(apiServiceProvider).uploadDocument(file);
+                          ref.invalidate(documentsProvider);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(content: Text('Upload successful!')));
+                          }
+                        } on ApiException catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+                          }
+                        }
+                      },
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.delete_sweep),
+                      label: const Text('Clear All Data'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+                      onPressed: () => _showClearAllDialog(context, ref),
+                    ),
+                  ],
                 ),
               ),
               const Divider(),
@@ -90,6 +141,7 @@ class AdminScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.picture_as_pdf),
                           title: Text(doc.filename),
+                          // --- FIX IS HERE: Removed the extra button from the list item ---
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

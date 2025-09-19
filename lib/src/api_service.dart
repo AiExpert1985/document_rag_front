@@ -59,6 +59,14 @@ class ApiService {
     }
   }
 
+  Future<void> clearAllDocuments() async {
+    try {
+      await _dio.delete('/documents');
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> uploadDocument(PlatformFile file) async {
     MultipartFile multipartFile;
     if (file.bytes != null) {
