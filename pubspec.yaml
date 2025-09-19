@@ -10,19 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Networking
   dio: ^5.4.0
-  
-  # State Management
   flutter_riverpod: ^2.4.9
-  
-  # Navigation
   go_router: ^12.1.1
-  
-  # File Picking
   file_picker: ^6.2.1
-  
-  # Other utilities
+  url_launcher: ^6.2.2 
   intl: ^0.18.1
   cupertino_icons: ^1.0.2
 

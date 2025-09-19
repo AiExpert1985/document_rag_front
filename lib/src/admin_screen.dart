@@ -6,9 +6,21 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
 import 'package:document_chat/src/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
+
+  Future<void> _launchURL(Uri url, BuildContext context) async {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      // CHANGED: Add this 'mounted' check to fix the warning.
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,7 +64,6 @@ class AdminScreen extends ConsumerWidget {
                       await ref.read(apiServiceProvider).uploadDocument(file);
                       if (!context.mounted) return;
 
-                      // CHANGED: Use invalidate instead of refresh
                       ref.invalidate(documentsProvider);
 
                       ScaffoldMessenger.of(context)
@@ -79,14 +90,25 @@ class AdminScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.picture_as_pdf),
                           title: Text(doc.filename),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              await ref.read(apiServiceProvider).deleteDocument(doc.id);
-
-                              // CHANGED: Use invalidate instead of refresh
-                              ref.invalidate(documentsProvider);
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.download, color: Colors.blue),
+                                tooltip: 'Download',
+                                onPressed: () {
+                                  _launchURL(Uri.parse(doc.downloadUrl), context);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                tooltip: 'Delete',
+                                onPressed: () async {
+                                  await ref.read(apiServiceProvider).deleteDocument(doc.id);
+                                  ref.invalidate(documentsProvider);
+                                },
+                              ),
+                            ],
                           ),
                         );
                       },
