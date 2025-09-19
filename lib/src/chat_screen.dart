@@ -1,10 +1,10 @@
-// src/chat_screen.dart
+// lib/src/chat_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
-// CHANGED: Import the new ChatMessage model
 import 'package:document_chat/src/models/chat_message.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -16,6 +16,13 @@ class ChatScreen extends ConsumerStatefulWidget {
 class ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -29,9 +36,19 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  // Helper function to launch URLs
+  Future<void> _launchURL(Uri url) async {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch $url')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // CHANGED: Listen to the provider to scroll on new messages
     ref.listen(chatProvider, (_, __) {
       _scrollToBottom();
     });
@@ -71,10 +88,8 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // CHANGED: Method now takes a typed ChatMessage object
   Widget _buildMessage(ChatMessage message) {
     final isUser = message.sender == Sender.user;
-
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -91,10 +106,14 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // CHANGED: New helper to build content based on message type
   Widget _buildMessageContent(ChatMessage message) {
     if (message.sender == Sender.user) {
-      return Text(message.text ?? "");
+      // For user's message, check if it contains Arabic characters to decide direction
+      final hasArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message.text ?? "");
+      return Text(
+        message.text ?? "",
+        textDirection: hasArabic ? TextDirection.rtl : TextDirection.ltr,
+      );
     }
 
     if (message.error != null) {
@@ -107,15 +126,33 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text.rich(TextSpan(children: [
-            const TextSpan(text: 'From: ', style: TextStyle(fontWeight: FontWeight.bold)),
+            const TextSpan(text: 'Source: ', style: TextStyle(fontWeight: FontWeight.bold)),
             TextSpan(text: '${result.documentName} (Page ${result.pageNumber})'),
           ])),
           const SizedBox(height: 8),
-          Text(result.contentSnippet),
+          // FIX: Added textDirection property for RTL support
+          Text(
+            result.contentSnippet,
+            textDirection: TextDirection.rtl,
+          ),
+          const SizedBox(height: 12),
+          // FIX: Added a button to download the source document
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.download_for_offline, size: 18),
+              label: const Text('View Source'),
+              onPressed: () => _launchURL(Uri.parse(result.downloadUrl)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
         ],
       );
     }
-    return const SizedBox.shrink(); // Should not happen
+    return const SizedBox.shrink();
   }
 
   Widget _buildChatInput() {
@@ -147,12 +184,5 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(chatProvider.notifier).sendMessage(_controller.text.trim());
       _controller.clear();
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
   }
 }
