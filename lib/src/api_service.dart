@@ -68,6 +68,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> uploadDocument(PlatformFile file) async {
+    // Renamed method
     MultipartFile multipartFile;
     if (file.bytes != null) {
       multipartFile = MultipartFile.fromBytes(file.bytes!, filename: file.name);
@@ -80,7 +81,7 @@ class ApiService {
     final formData = FormData.fromMap({'file': multipartFile});
 
     try {
-      final response = await _dio.post('/upload-pdf', data: formData);
+      final response = await _dio.post('/upload-document', data: formData); // Updated endpoint
       return response.data;
     } on DioException catch (e) {
       _handleDioError(e);

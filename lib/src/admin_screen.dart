@@ -90,16 +90,51 @@ class AdminScreen extends ConsumerWidget {
                   children: [
                     ElevatedButton.icon(
                       icon: const Icon(Icons.upload_file),
-                      label: const Text('Upload PDF'),
+                      label: const Text('Upload Document'), // Changed from 'Upload PDF'
                       onPressed: () async {
                         FilePickerResult? result = await FilePicker.platform.pickFiles(
                           type: FileType.custom,
-                          allowedExtensions: ['pdf'],
+                          allowedExtensions: [
+                            'pdf',
+                            'jpg',
+                            'jpeg',
+                            'png',
+                            'docx',
+                            'doc'
+                          ], // Expanded list
                         );
 
                         if (result == null || !context.mounted) return;
 
                         final file = result.files.first;
+
+                        // Client-side validation
+                        final allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'];
+                        final fileExtension = file.extension?.toLowerCase() ?? '';
+
+                        if (!allowedExtensions.contains(fileExtension)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Unsupported file type: $fileExtension. Allowed: ${allowedExtensions.join(", ")}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        // Size validation (50MB limit)
+                        const maxSizeBytes = 50 * 1024 * 1024;
+                        if (file.size > maxSizeBytes) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('File too large. Maximum size is 50MB.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
                         ScaffoldMessenger.of(context)
                             .showSnackBar(const SnackBar(content: Text('Uploading...')));
 
