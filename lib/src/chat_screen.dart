@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
 import 'package:document_chat/src/models/chat_message.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -36,7 +36,6 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  // Helper function to launch URLs
   Future<void> _launchURL(Uri url) async {
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
@@ -59,6 +58,10 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         title: const Text('Document Chat'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.clear_all),
+            onPressed: () => ref.read(chatProvider.notifier).clearHistory(),
+          ),
           TextButton(
             onPressed: () => context.go('/admin'),
             child: const Text('Go to Admin', style: TextStyle(color: Colors.white)),
@@ -108,7 +111,6 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessageContent(ChatMessage message) {
     if (message.sender == Sender.user) {
-      // For user's message, check if it contains Arabic characters to decide direction
       final hasArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message.text ?? "");
       return Text(
         message.text ?? "",
@@ -120,6 +122,7 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
       return Text(message.error!, style: const TextStyle(color: Colors.black87));
     }
 
+    // Handle SearchResult (both live and history messages use this now)
     if (message.searchResult != null) {
       final result = message.searchResult!;
       return Column(
@@ -130,13 +133,11 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
             TextSpan(text: '${result.documentName} (Page ${result.pageNumber})'),
           ])),
           const SizedBox(height: 8),
-          // FIX: Added textDirection property for RTL support
           Text(
             result.contentSnippet,
             textDirection: TextDirection.rtl,
           ),
           const SizedBox(height: 12),
-          // FIX: Added a button to download the source document
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -152,6 +153,17 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       );
     }
+
+    // Handle simple AI text messages (fallback for any text-only messages)
+    if (message.text != null) {
+      final hasArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message.text!);
+      return Text(
+        message.text!,
+        textDirection: hasArabic ? TextDirection.rtl : TextDirection.ltr,
+        style: const TextStyle(color: Colors.black87),
+      );
+    }
+
     return const SizedBox.shrink();
   }
 

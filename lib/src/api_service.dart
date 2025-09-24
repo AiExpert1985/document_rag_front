@@ -1,8 +1,7 @@
-// lib/src/api_service.dart
+// lib/src/api_service.dart - No changes needed from your current version
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 
-// CHANGED: Models are still imported for type safety
 import 'package:document_chat/src/models/document.dart';
 import 'package:document_chat/src/models/search_result.dart';
 
@@ -17,10 +16,9 @@ class ApiException implements Exception {
 class ApiService {
   final Dio _dio;
 
-  // CHANGED: Reverted to a hardcoded baseUrl and a default constructor
   ApiService()
       : _dio = Dio(BaseOptions(
-          baseUrl: 'http://127.0.0.1:8000', // Hardcoded URL
+          baseUrl: 'http://127.0.0.1:8000',
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 60),
         ));
@@ -68,7 +66,6 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> uploadDocument(PlatformFile file) async {
-    // Renamed method
     MultipartFile multipartFile;
     if (file.bytes != null) {
       multipartFile = MultipartFile.fromBytes(file.bytes!, filename: file.name);
@@ -81,7 +78,7 @@ class ApiService {
     final formData = FormData.fromMap({'file': multipartFile});
 
     try {
-      final response = await _dio.post('/upload-document', data: formData); // Updated endpoint
+      final response = await _dio.post('/upload-document', data: formData);
       return response.data;
     } on DioException catch (e) {
       _handleDioError(e);
@@ -93,6 +90,23 @@ class ApiService {
       final response = await _dio.post('/search', data: {'question': query});
       final List<dynamic> results = response.data['results'];
       return results.map((json) => SearchResult.fromJson(json)).toList();
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getChatHistory() async {
+    try {
+      final response = await _dio.get('/search-history');
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<void> clearChatHistory() async {
+    try {
+      await _dio.delete('/search-history');
     } on DioException catch (e) {
       _handleDioError(e);
     }
