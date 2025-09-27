@@ -23,21 +23,27 @@ class ApiService {
           receiveTimeout: const Duration(seconds: 60),
         ));
 
+  // --- FIX #7: IMPROVED DIO ERROR HANDLING WITH ERROR CODES ---
   Never _handleDioError(DioException e) {
+    final errorCode = e.response?.statusCode ?? 0;
+
     if (e.response?.data is Map && e.response?.data['detail'] != null) {
-      throw ApiException(e.response?.data['detail']);
+      final detail = e.response?.data['detail'];
+      throw ApiException('[$errorCode] $detail');
     }
+
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        throw ApiException('Connection timed out. Please try again.');
+        throw ApiException('[$errorCode] Connection timed out. Please try again.');
       case DioExceptionType.connectionError:
-        throw ApiException('Could not connect to the server. Please check your network.');
+        throw ApiException('[$errorCode] Could not connect to server. Check network.');
       default:
-        throw ApiException('An unexpected error occurred. Please try again.');
+        throw ApiException('[$errorCode] Unexpected error occurred.');
     }
   }
+  // -------------------------------------------------------------
 
   Future<List<Document>> listDocuments() async {
     try {

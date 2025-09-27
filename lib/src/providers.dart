@@ -72,13 +72,21 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
     try {
       final results = await _apiService.search(message);
+
       if (results.isEmpty) {
         state = [...state, ChatMessage(sender: Sender.ai, error: 'No relevant information found.')];
       } else {
-        // Add each search result as a separate AI message
+        // Define aiMessages here
         final aiMessages =
-            results.map((result) => ChatMessage(sender: Sender.ai, searchResult: result));
-        state = [...state, ...aiMessages];
+            results.map((result) => ChatMessage(sender: Sender.ai, searchResult: result)).toList();
+
+        // Limit to last 100 messages
+        final allMessages = [...state, ...aiMessages];
+        const maxMessages = 100;
+
+        state = allMessages.length > maxMessages
+            ? allMessages.sublist(allMessages.length - maxMessages)
+            : allMessages;
       }
     } on ApiException catch (e) {
       state = [...state, ChatMessage(sender: Sender.ai, error: 'Error: $e')];

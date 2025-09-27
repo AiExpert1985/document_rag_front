@@ -99,9 +99,7 @@ class AdminScreen extends ConsumerWidget {
                             'jpg',
                             'jpeg',
                             'png',
-                            'docx',
-                            'doc'
-                          ], // Expanded list
+                          ],
                         );
 
                         if (result == null || !context.mounted) return;
@@ -109,7 +107,7 @@ class AdminScreen extends ConsumerWidget {
                         final file = result.files.first;
 
                         // Client-side validation
-                        final allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'];
+                        final allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
                         final fileExtension = file.extension?.toLowerCase() ?? '';
 
                         if (!allowedExtensions.contains(fileExtension)) {
