@@ -18,7 +18,7 @@ class ApiService {
 
   ApiService()
       : _dio = Dio(BaseOptions(
-          baseUrl: 'http://127.0.0.1:8000',
+          baseUrl: 'http://100.127.26.110:8000',
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 60),
         ));
@@ -36,9 +36,11 @@ class ApiService {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        throw ApiException('[$errorCode] Connection timed out. Please try again.');
+        throw ApiException(
+            '[$errorCode] Connection timed out. Please try again.');
       case DioExceptionType.connectionError:
-        throw ApiException('[$errorCode] Could not connect to server. Check network.');
+        throw ApiException(
+            '[$errorCode] Could not connect to server. Check network.');
       default:
         throw ApiException('[$errorCode] Unexpected error occurred.');
     }
@@ -76,7 +78,8 @@ class ApiService {
     if (file.bytes != null) {
       multipartFile = MultipartFile.fromBytes(file.bytes!, filename: file.name);
     } else if (file.path != null) {
-      multipartFile = await MultipartFile.fromFile(file.path!, filename: file.name);
+      multipartFile =
+          await MultipartFile.fromFile(file.path!, filename: file.name);
     } else {
       throw ApiException('Cannot read the selected file.');
     }
