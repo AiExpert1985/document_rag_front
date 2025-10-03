@@ -1,11 +1,11 @@
 // lib/src/admin_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
 import 'package:document_chat/src/api_service.dart';
+import 'package:document_chat/src/widgets/upload_progress_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AdminScreen extends ConsumerWidget {
@@ -37,7 +37,7 @@ class AdminScreen extends ConsumerWidget {
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Clear All'),
               onPressed: () async {
-                Navigator.of(dialogContext).pop(); // Close the dialog
+                Navigator.of(dialogContext).pop();
                 try {
                   await ref.read(apiServiceProvider).clearAllDocuments();
                   ref.invalidate(documentsProvider);
@@ -49,7 +49,7 @@ class AdminScreen extends ConsumerWidget {
                 } on ApiException catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to clear documents: $e')),
+                      SnackBar(content: Text('Failed to clear documents: ${e.userMessage}')),
                     );
                   }
                 }
@@ -59,6 +59,86 @@ class AdminScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+
+    if (result == null || !context.mounted) return;
+
+    final file = result.files.first;
+
+    // Client-side validation
+    final allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    final fileExtension = file.extension?.toLowerCase() ?? '';
+
+    if (!allowedExtensions.contains(fileExtension)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Unsupported file type: $fileExtension. Allowed: ${allowedExtensions.join(", ")}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Size validation (50MB limit)
+    const maxSizeBytes = 50 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('File too large. Maximum size is 50MB.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Start upload and get document ID
+      final documentId = await ref.read(apiServiceProvider).uploadDocument(file);
+
+      if (!context.mounted) return;
+
+      // Show progress dialog
+      final success = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => UploadProgressDialog(
+          documentId: documentId,
+          filename: file.name,
+          apiService: ref.read(apiServiceProvider),
+        ),
+      );
+
+      if (!context.mounted) return;
+
+      if (success == true) {
+        ref.invalidate(documentsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document processed successfully!')),
+        );
+      } else if (success == false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Document processing failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.userMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -80,7 +160,6 @@ class AdminScreen extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             children: [
-              // --- FIX IS HERE: The "Clear All" button is now at the top ---
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Wrap(
@@ -90,66 +169,8 @@ class AdminScreen extends ConsumerWidget {
                   children: [
                     ElevatedButton.icon(
                       icon: const Icon(Icons.upload_file),
-                      label: const Text('Upload Document'), // Changed from 'Upload PDF'
-                      onPressed: () async {
-                        FilePickerResult? result = await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: [
-                            'pdf',
-                            'jpg',
-                            'jpeg',
-                            'png',
-                          ],
-                        );
-
-                        if (result == null || !context.mounted) return;
-
-                        final file = result.files.first;
-
-                        // Client-side validation
-                        final allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
-                        final fileExtension = file.extension?.toLowerCase() ?? '';
-
-                        if (!allowedExtensions.contains(fileExtension)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Unsupported file type: $fileExtension. Allowed: ${allowedExtensions.join(", ")}'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-
-                        // Size validation (50MB limit)
-                        const maxSizeBytes = 50 * 1024 * 1024;
-                        if (file.size > maxSizeBytes) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('File too large. Maximum size is 50MB.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(content: Text('Uploading...')));
-
-                        try {
-                          await ref.read(apiServiceProvider).uploadDocument(file);
-                          ref.invalidate(documentsProvider);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(content: Text('Upload successful!')));
-                          }
-                        } on ApiException catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-                          }
-                        }
-                      },
+                      label: const Text('Upload Document'),
+                      onPressed: () => _handleUpload(context, ref),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.delete_sweep),
@@ -174,7 +195,6 @@ class AdminScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.picture_as_pdf),
                           title: Text(doc.filename),
-                          // --- FIX IS HERE: Removed the extra button from the list item ---
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
