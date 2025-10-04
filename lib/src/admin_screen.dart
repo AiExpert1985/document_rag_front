@@ -172,7 +172,7 @@ class AdminScreen extends ConsumerWidget {
       // Show progress dialog
       final success = await showDialog<bool>(
         context: context,
-        barrierDismissible: true,
+        barrierDismissible: false,
         builder: (context) => UploadProgressDialog(
           documentId: documentId,
           filename: file.name,
