@@ -61,6 +61,50 @@ class AdminScreen extends ConsumerWidget {
     );
   }
 
+  void _showDeleteDialog(BuildContext context, WidgetRef ref, String docId, String filename) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Document?'),
+          content:
+              Text('Are you sure you want to delete "$filename"? This action cannot be undone.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  await ref.read(apiServiceProvider).deleteDocument(docId);
+                  ref.invalidate(documentsProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Deleted "$filename" successfully')),
+                    );
+                  }
+                } on ApiException catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to delete: ${e.userMessage}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -149,6 +193,11 @@ class AdminScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Admin - Manage Documents'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh document list',
+            onPressed: () => ref.invalidate(documentsProvider),
+          ),
           TextButton(
             onPressed: () => context.go('/chat'),
             child: const Text('Go to Chat', style: TextStyle(color: Colors.white)),
@@ -208,10 +257,8 @@ class AdminScreen extends ConsumerWidget {
                               IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
                                 tooltip: 'Delete',
-                                onPressed: () async {
-                                  await ref.read(apiServiceProvider).deleteDocument(doc.id);
-                                  ref.invalidate(documentsProvider);
-                                },
+                                onPressed: () =>
+                                    _showDeleteDialog(context, ref, doc.id, doc.filename),
                               ),
                             ],
                           ),
