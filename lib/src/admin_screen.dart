@@ -79,16 +79,37 @@ class AdminScreen extends ConsumerWidget {
               child: const Text('Delete'),
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
+
+                // Show loading indicator
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext loadingContext) {
+                    return const AlertDialog(
+                      content: Row(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 20),
+                          Text('Deleting document...'),
+                        ],
+                      ),
+                    );
+                  },
+                );
+
                 try {
                   await ref.read(apiServiceProvider).deleteDocument(docId);
                   ref.invalidate(documentsProvider);
+
                   if (context.mounted) {
+                    Navigator.of(context).pop(); // Close loading dialog
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Deleted "$filename" successfully')),
                     );
                   }
                 } on ApiException catch (e) {
                   if (context.mounted) {
+                    Navigator.of(context).pop(); // Close loading dialog
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Failed to delete: ${e.userMessage}'),
@@ -151,7 +172,7 @@ class AdminScreen extends ConsumerWidget {
       // Show progress dialog
       final success = await showDialog<bool>(
         context: context,
-        barrierDismissible: false,
+        barrierDismissible: true,
         builder: (context) => UploadProgressDialog(
           documentId: documentId,
           filename: file.name,
