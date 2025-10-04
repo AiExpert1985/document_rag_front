@@ -12,7 +12,7 @@ final apiServiceProvider = Provider((ref) => ApiService());
 
 // Manages the list of documents for the admin screen
 final documentsProvider = FutureProvider<List<Document>>((ref) async {
-  return ref.watch(apiServiceProvider).listDocuments();
+  return await ref.watch(apiServiceProvider).listDocuments();
 });
 
 // Manages chat messages
