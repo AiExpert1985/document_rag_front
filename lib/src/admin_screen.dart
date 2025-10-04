@@ -26,8 +26,9 @@ class AdminScreen extends ConsumerWidget {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Clear All Data?'),
-          content: const Text(
-              'This will permanently delete all uploaded documents and their data. This action cannot be undone.'),
+          content: const Text('This will permanently delete all uploaded documents, their data, '
+              'and all chat history. This action cannot be undone.' // UPDATED
+              ),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
