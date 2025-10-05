@@ -27,8 +27,7 @@ class AdminScreen extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Clear All Data?'),
           content: const Text('This will permanently delete all uploaded documents, their data, '
-              'and all chat history. This action cannot be undone.' // UPDATED
-              ),
+              'and all chat history. This action cannot be undone.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
@@ -41,16 +40,23 @@ class AdminScreen extends ConsumerWidget {
                 Navigator.of(dialogContext).pop();
                 try {
                   await ref.read(apiServiceProvider).clearAllDocuments();
+
+                  // Invalidate both providers
                   ref.invalidate(documentsProvider);
+                  ref.invalidate(chatProvider); // ADD THIS LINE
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All documents cleared successfully!')),
+                      const SnackBar(content: Text('All data cleared successfully!')),
                     );
                   }
                 } on ApiException catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to clear documents: ${e.userMessage}')),
+                      SnackBar(
+                        content: Text('Failed to clear: ${e.userMessage}'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   }
                 }
