@@ -1,4 +1,5 @@
 // lib/src/admin_screen.dart
+import 'package:document_chat/src/utils/url_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -6,19 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
 import 'package:document_chat/src/api_service.dart';
 import 'package:document_chat/src/widgets/upload_progress_dialog.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
-
-  Future<void> _launchURL(Uri url, BuildContext context) async {
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $url')),
-      );
-    }
-  }
 
   void _showClearAllDialog(BuildContext context, WidgetRef ref) {
     showDialog(
@@ -26,7 +17,8 @@ class AdminScreen extends ConsumerWidget {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Clear All Data?'),
-          content: const Text('This will permanently delete all uploaded documents, their data, '
+          content: const Text(
+              'This will permanently delete all uploaded documents, their data, '
               'and all chat history. This action cannot be undone.'),
           actions: <Widget>[
             TextButton(
@@ -47,7 +39,8 @@ class AdminScreen extends ConsumerWidget {
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All data cleared successfully!')),
+                      const SnackBar(
+                          content: Text('All data cleared successfully!')),
                     );
                   }
                 } on ApiException catch (e) {
@@ -68,14 +61,15 @@ class AdminScreen extends ConsumerWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, WidgetRef ref, String docId, String filename) {
+  void _showDeleteDialog(
+      BuildContext context, WidgetRef ref, String docId, String filename) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Delete Document?'),
-          content:
-              Text('Are you sure you want to delete "$filename"? This action cannot be undone.'),
+          content: Text(
+              'Are you sure you want to delete "$filename"? This action cannot be undone.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
@@ -111,7 +105,8 @@ class AdminScreen extends ConsumerWidget {
                   if (context.mounted) {
                     Navigator.of(context).pop(); // Close loading dialog
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Deleted "$filename" successfully')),
+                      SnackBar(
+                          content: Text('Deleted "$filename" successfully')),
                     );
                   }
                 } on ApiException catch (e) {
@@ -172,7 +167,8 @@ class AdminScreen extends ConsumerWidget {
 
     try {
       // Start upload and get document ID
-      final documentId = await ref.read(apiServiceProvider).uploadDocument(file);
+      final documentId =
+          await ref.read(apiServiceProvider).uploadDocument(file);
 
       if (!context.mounted) return;
 
@@ -228,7 +224,8 @@ class AdminScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => context.go('/chat'),
-            child: const Text('Go to Chat', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Go to Chat', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -252,7 +249,8 @@ class AdminScreen extends ConsumerWidget {
                     ElevatedButton.icon(
                       icon: const Icon(Icons.delete_sweep),
                       label: const Text('Clear All Data'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[700]),
                       onPressed: () => _showClearAllDialog(context, ref),
                     ),
                   ],
@@ -263,7 +261,8 @@ class AdminScreen extends ConsumerWidget {
                 child: documentsAsync.when(
                   data: (docs) {
                     if (docs.isEmpty) {
-                      return const Center(child: Text('No documents uploaded yet.'));
+                      return const Center(
+                          child: Text('No documents uploaded yet.'));
                     }
                     return ListView.builder(
                       itemCount: docs.length,
@@ -276,17 +275,20 @@ class AdminScreen extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.download, color: Colors.blue),
+                                icon: const Icon(Icons.download,
+                                    color: Colors.blue),
                                 tooltip: 'Download',
                                 onPressed: () {
-                                  _launchURL(Uri.parse(doc.downloadUrl), context);
+                                  launchDocumentUrl(context, doc.downloadUrl,
+                                      documentName: doc.filename);
                                 },
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
                                 tooltip: 'Delete',
-                                onPressed: () =>
-                                    _showDeleteDialog(context, ref, doc.id, doc.filename),
+                                onPressed: () => _showDeleteDialog(
+                                    context, ref, doc.id, doc.filename),
                               ),
                             ],
                           ),
@@ -294,8 +296,10 @@ class AdminScreen extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) => Center(child: Text('Error loading documents: $err')),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) =>
+                      Center(child: Text('Error loading documents: $err')),
                 ),
               ),
             ],

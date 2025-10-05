@@ -1,10 +1,10 @@
 // lib/src/chat_screen.dart
+import 'package:document_chat/src/utils/url_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:document_chat/src/providers.dart';
 import 'package:document_chat/src/models/chat_message.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -36,16 +36,6 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  Future<void> _launchURL(Uri url) async {
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $url')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen(chatProvider, (_, __) {
@@ -64,7 +54,8 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           TextButton(
             onPressed: () => context.go('/admin'),
-            child: const Text('Go to Admin', style: TextStyle(color: Colors.white)),
+            child: const Text('Go to Admin',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -119,7 +110,8 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     if (message.error != null) {
-      return Text(message.error!, style: const TextStyle(color: Colors.black87));
+      return Text(message.error!,
+          style: const TextStyle(color: Colors.black87));
     }
 
     // Handle SearchResult (both live and history messages use this now)
@@ -129,8 +121,11 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text.rich(TextSpan(children: [
-            const TextSpan(text: 'Source: ', style: TextStyle(fontWeight: FontWeight.bold)),
-            TextSpan(text: '${result.documentName} (Page ${result.pageNumber})'),
+            const TextSpan(
+                text: 'Source: ',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            TextSpan(
+                text: '${result.documentName} (Page ${result.pageNumber})'),
           ])),
           const SizedBox(height: 8),
           Text(
@@ -143,9 +138,14 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
             child: TextButton.icon(
               icon: const Icon(Icons.download_for_offline, size: 18),
               label: const Text('View Source'),
-              onPressed: () => _launchURL(Uri.parse(result.downloadUrl)),
+              onPressed: () => launchDocumentUrl(
+                context,
+                result.downloadUrl,
+                documentName: result.documentName,
+              ),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
