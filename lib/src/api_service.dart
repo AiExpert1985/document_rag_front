@@ -1,9 +1,8 @@
 // lib/src/api_service.dart
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-
 import 'package:document_chat/src/models/document.dart';
-import 'package:document_chat/src/models/search_result.dart';
+import 'package:document_chat/src/models/page_search_result.dart';
 import 'package:document_chat/src/models/processing_progress.dart';
 
 class ApiException implements Exception {
@@ -12,7 +11,6 @@ class ApiException implements Exception {
 
   ApiException(this.message, {this.errorCode});
 
-  // User-friendly error messages
   String get userMessage {
     switch (errorCode) {
       case 'FILE_TOO_LARGE':
@@ -41,16 +39,15 @@ class ApiService {
 
   ApiService()
       : _dio = Dio(BaseOptions(
-          baseUrl: 'http://100.127.26.110:8000',
+          baseUrl: 'http://YOUR_SERVER_IP:8000', // ← UPDATE THIS
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 60),
         ));
 
   Never _handleDioError(DioException e) {
     final errorCode = e.response?.statusCode ?? 0;
-
-    // Extract error_code from response if available
     String? apiErrorCode;
+
     if (e.response?.data is Map && e.response?.data['error_code'] != null) {
       apiErrorCode = e.response?.data['error_code'];
     }
@@ -81,6 +78,7 @@ class ApiService {
     }
   }
 
+  // Documents
   Future<List<Document>> listDocuments() async {
     try {
       final response = await _dio.get('/documents');
@@ -107,13 +105,14 @@ class ApiService {
     }
   }
 
-  // UPDATED: Returns document_id for progress tracking
+  // Upload
   Future<String> uploadDocument(PlatformFile file) async {
     MultipartFile multipartFile;
     if (file.bytes != null) {
       multipartFile = MultipartFile.fromBytes(file.bytes!, filename: file.name);
     } else if (file.path != null) {
-      multipartFile = await MultipartFile.fromFile(file.path!, filename: file.name);
+      multipartFile =
+          await MultipartFile.fromFile(file.path!, filename: file.name);
     } else {
       throw ApiException('Cannot read the selected file.');
     }
@@ -123,7 +122,6 @@ class ApiService {
     try {
       final response = await _dio.post('/upload-document', data: formData);
 
-      // Check for errors in response
       if (response.data['status'] == 'error') {
         throw ApiException(
           response.data['error'] ?? 'Upload failed',
@@ -137,7 +135,6 @@ class ApiService {
     }
   }
 
-  // NEW: Poll progress status
   Future<ProcessingProgress> getProcessingStatus(String documentId) async {
     try {
       final response = await _dio.get('/processing-status/$documentId');
@@ -147,16 +144,25 @@ class ApiService {
     }
   }
 
-  Future<List<SearchResult>> search(String query) async {
+  // Search - Page-based (PRIMARY)
+  Future<List<PageSearchResult>> searchPages(String query) async {
     try {
-      final response = await _dio.post('/search', data: {'question': query});
+      final response =
+          await _dio.post('/search-pages', data: {'question': query});
+
       final List<dynamic> results = response.data['results'];
-      return results.map((json) => SearchResult.fromJson(json)).toList();
+      return results.map((json) => PageSearchResult.fromJson(json)).toList();
     } on DioException catch (e) {
       _handleDioError(e);
     }
   }
 
+  // Default search (alias)
+  Future<List<PageSearchResult>> search(String query) async {
+    return searchPages(query);
+  }
+
+  // Chat History
   Future<List<Map<String, dynamic>>> getChatHistory() async {
     try {
       final response = await _dio.get('/search-history');

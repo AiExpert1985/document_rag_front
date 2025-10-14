@@ -5,18 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:document_chat/src/api_service.dart';
 import 'package:document_chat/src/models/document.dart';
 import 'package:document_chat/src/models/chat_message.dart';
-import 'package:document_chat/src/models/search_result.dart';
+import 'package:document_chat/src/models/page_search_result.dart';
 
-// Provides the API service instance
 final apiServiceProvider = Provider((ref) => ApiService());
 
-// Manages the list of documents for the admin screen
 final documentsProvider = FutureProvider<List<Document>>((ref) async {
   return await ref.watch(apiServiceProvider).listDocuments();
 });
 
-// Manages chat messages
-final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
+final chatProvider =
+    StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
   return ChatNotifier(ref.watch(apiServiceProvider));
 });
 
@@ -30,8 +28,8 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   Future<void> _loadHistory() async {
     try {
       final history = await _apiService.getChatHistory();
-
       final messages = <ChatMessage>[];
+
       for (final item in history) {
         final sender = item['sender'] as String;
         final content = item['content'] as String;
@@ -39,23 +37,25 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
         if (sender == 'user') {
           messages.add(ChatMessage(sender: Sender.user, text: content));
         } else if (sender == 'ai_result') {
-          // Parse JSON and create SearchResult (same as live chat)
           try {
             final resultData = json.decode(content);
-            final searchResult = SearchResult(
+            final pageResult = PageSearchResult(
+              documentId: resultData['document_id'],
               documentName: resultData['document_name'],
               pageNumber: resultData['page_number'],
-              contentSnippet: resultData['content_snippet'],
-              documentId: resultData['document_id'],
+              score: (resultData['score'] ?? 0.0).toDouble(),
+              chunkCount: resultData['chunk_count'] ?? 1,
+              imageUrl: resultData['image_url'] ?? '',
+              thumbnailUrl: resultData['thumbnail_url'] ?? '',
+              highlights: List<String>.from(resultData['highlights'] ?? []),
               downloadUrl: resultData['download_url'],
             );
-            messages.add(ChatMessage(sender: Sender.ai, searchResult: searchResult));
+            messages
+                .add(ChatMessage(sender: Sender.ai, pageResult: pageResult));
           } catch (e) {
-            // Fallback to text if JSON parsing fails
             messages.add(ChatMessage(sender: Sender.ai, text: content));
           }
         } else if (sender == 'ai') {
-          // Handle simple AI text messages (like "No relevant information found")
           messages.add(ChatMessage(sender: Sender.ai, text: content));
         }
       }
@@ -67,29 +67,40 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   }
 
   Future<void> sendMessage(String message) async {
-    // Add user message to state
     state = [...state, ChatMessage(sender: Sender.user, text: message)];
 
     try {
-      final results = await _apiService.search(message);
+      final results = await _apiService.searchPages(message);
 
       if (results.isEmpty) {
-        state = [...state, ChatMessage(sender: Sender.ai, error: 'No relevant information found.')];
+        state = [
+          ...state,
+          ChatMessage(
+            sender: Sender.ai,
+            error: 'No relevant pages found.\n\n'
+                'Try:\n'
+                '• Different keywords\n'
+                '• Simpler question\n'
+                '• Check document is uploaded',
+          )
+        ];
       } else {
-        // Define aiMessages here
-        final aiMessages =
-            results.map((result) => ChatMessage(sender: Sender.ai, searchResult: result)).toList();
+        final aiMessages = results
+            .map((result) => ChatMessage(sender: Sender.ai, pageResult: result))
+            .toList();
 
-        // Limit to last 100 messages
-        final allMessages = [...state, ...aiMessages];
         const maxMessages = 100;
+        final allMessages = [...state, ...aiMessages];
 
         state = allMessages.length > maxMessages
             ? allMessages.sublist(allMessages.length - maxMessages)
             : allMessages;
       }
     } on ApiException catch (e) {
-      state = [...state, ChatMessage(sender: Sender.ai, error: 'Error: $e')];
+      state = [
+        ...state,
+        ChatMessage(sender: Sender.ai, error: 'Error: ${e.userMessage}')
+      ];
     }
   }
 
