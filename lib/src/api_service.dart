@@ -1,8 +1,8 @@
 // lib/src/api_service.dart
 import 'package:dio/dio.dart';
+import 'package:document_chat/src/models/page_search_result.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:document_chat/src/models/document.dart';
-import 'package:document_chat/src/models/page_search_result.dart';
 import 'package:document_chat/src/models/processing_progress.dart';
 
 class ApiException implements Exception {
