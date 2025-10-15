@@ -39,7 +39,7 @@ class ApiService {
 
   ApiService()
       : _dio = Dio(BaseOptions(
-          baseUrl: 'http://YOUR_SERVER_IP:8000', // ← UPDATE THIS
+          baseUrl: 'http://100.127.26.110:8000',
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 60),
         ));
