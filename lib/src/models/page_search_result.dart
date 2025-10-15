@@ -10,6 +10,8 @@ class PageSearchResult {
   final String thumbnailUrl;
   final List<String> highlights;
   final String downloadUrl;
+  final List<String>? segmentIds; // ADD THIS
+  final String? highlightToken; // ADD THIS (if not already there)
 
   PageSearchResult({
     required this.documentId,
@@ -21,6 +23,8 @@ class PageSearchResult {
     required this.thumbnailUrl,
     required this.highlights,
     required this.downloadUrl,
+    this.segmentIds, // ADD THIS
+    this.highlightToken, // ADD THIS
   });
 
   factory PageSearchResult.fromJson(Map<String, dynamic> json) {
@@ -34,6 +38,10 @@ class PageSearchResult {
       thumbnailUrl: json['thumbnail_url'] as String,
       highlights: List<String>.from(json['highlights'] ?? []),
       downloadUrl: json['download_url'] as String,
+      segmentIds: json['segment_ids'] != null // ADD THIS
+          ? List<String>.from(json['segment_ids'])
+          : null,
+      highlightToken: json['highlight_token'] as String?, // ADD THIS
     );
   }
 
