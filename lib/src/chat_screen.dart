@@ -67,8 +67,7 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   itemCount: messages.length,
-                  itemBuilder: (context, index) =>
-                      _buildMessage(messages[index]),
+                  itemBuilder: (context, index) => _buildMessage(messages[index]),
                 ),
               ),
               _buildChatInput(),
@@ -169,8 +168,7 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.blue[50],
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,8 +239,7 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.highlight,
-                          size: 16, color: Colors.orange[700]),
+                      Icon(Icons.highlight, size: 16, color: Colors.orange[700]),
                       const SizedBox(width: 8),
                       const Text(
                         'Relevant sections:',
@@ -287,8 +284,7 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
                     const SizedBox(width: 8),
                     const Text(
                       'Page preview:',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ],
                 ),
@@ -432,24 +428,13 @@ class ChatScreenState extends ConsumerState<ChatScreen> {
 
   // FULLSCREEN: Show original image
   void _showFullPageImage(BuildContext context, PageSearchResult result) {
-    // Build highlighted URL if we have segment_ids
-    String imageUrl = result.highlightToken != null
-        ? 'http://100.127.26.110:8000/page-image/highlighted/${result.highlightToken}'
-        : result.imageUrl;
-    if (result.segmentIds != null && result.segmentIds!.isNotEmpty) {
-      // Extract doc_id and page from imageUrl: "/page-image/{doc_id}/{page_number}"
-      final uri = Uri.parse(result.imageUrl);
-      final parts = uri.pathSegments;
+    String imageUrl;
 
-      // pathSegments: ['page-image', 'doc_id', 'page_number']
-      if (parts.length >= 3 && parts[0] == 'page-image') {
-        final docId = parts[1];
-        final pageNum = parts[2];
-
-        // Build base URL from API service
-        const apiBaseUrl = 'http://100.127.26.110:8000';
-        imageUrl = '$apiBaseUrl/page-image/highlighted/$docId/$pageNum';
-      }
+    if (result.highlightToken != null && result.highlightToken!.isNotEmpty) {
+      imageUrl = 'http://100.127.26.110:8000/page-image/by-token/${result.highlightToken}';
+    } else {
+      // Fallback to original non-highlighted image
+      imageUrl = result.imageUrl;
     }
 
     Navigator.of(context).push(
